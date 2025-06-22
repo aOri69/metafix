@@ -1,0 +1,12 @@
+[workspace]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["Aleksandr Sokolov <alex@sokolov.dev>"]
+readme = "README.md"
+repository = "https://github.com/aOri69/metafix.git"
+homepage = "https://github.com/aOri69/metafix.git"
+description = "Metadata fixer for photos and videos"
