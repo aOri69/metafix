@@ -1,5 +1,6 @@
 [workspace]
 resolver = "3"
+members = ["crates/metafix-cli", "crates/metafix-core"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,3 +11,7 @@ readme = "README.md"
 repository = "https://github.com/aOri69/metafix.git"
 homepage = "https://github.com/aOri69/metafix.git"
 description = "Metadata fixer for photos and videos"
+
+[workspace.dependencies]
+thiserror = { version = "2.0.12" }
+anyhow = { version = "1.0.98" }
