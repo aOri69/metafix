@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+mod commands;
+
 #[derive(Parser, Debug)]
 #[command(name = "metafix", version, about = "Batch-fix photo/video metadata")]
 struct Cli {
@@ -14,14 +16,6 @@ enum Commands {
         // #[arg(short, long)]
         path: PathBuf,
     },
-    Preview {
-        // #[arg(short, long)]
-        path: PathBuf,
-    },
-    Apply {
-        // #[arg(short, long)]
-        path: PathBuf,
-    }
 }
 
 fn main() -> anyhow::Result<()> {
@@ -29,13 +23,7 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Scan { path } => {
-            metafix_core::scan(path)?;
-        }
-        Commands::Preview { path } => {
-            metafix_core::preview(path)?;
-        }
-        Commands::Apply { path } => {
-            metafix_core::apply(path)?;
+            commands::scan(path)?;
         }
     }
 
