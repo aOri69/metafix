@@ -10,7 +10,20 @@ authors = ["Aleksandr Sokolov <alex@sokolov.dev>"]
 readme = "README.md"
 repository = "https://github.com/aOri69/metafix.git"
 homepage = "https://github.com/aOri69/metafix.git"
-description = "Metadata fixer for photos and videos"
+keywords = [
+    "exif",
+    "metadata",
+    "photo",
+    "cli",
+    "batch",
+    "google-takeout"
+]
+categories = [
+    "command-line-utilities",
+    "multimedia",
+    "data-processing",
+    "file-management"
+]
 
 [workspace.dependencies]
 thiserror = { version = "2.0.12" }
