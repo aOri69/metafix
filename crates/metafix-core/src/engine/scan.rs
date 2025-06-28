@@ -3,18 +3,20 @@ use std::path::{Path, PathBuf};
 use crate::{Error, ScanReport};
 
 /// Internal implementation, accessed only through `api::scan::scan`.
-pub(crate) fn run(path: &Path) -> Result<ScanReport, Error> {
+pub fn run(path: &Path) -> Result<ScanReport, Error> {
     println!("scanning from core");
-    println!("{path:?}");
+    println!("{}", path.to_str().unwrap_or_default());
     let _files = walk(path)?;
+    // dbg!(files);
     Ok(ScanReport::default())
 }
 
 fn walk<P: AsRef<Path>>(root: P) -> std::io::Result<Vec<PathBuf>> {
+    // Invalid dir/file check
+    std::fs::metadata(root.as_ref())?;
+
     let mut stack = vec![root.as_ref().to_path_buf()];
     let mut result = Vec::new();
-
-    //TODO Add invalid dir check?
 
     while let Some(entry) = stack.pop() {
         if entry.is_file() {
@@ -23,8 +25,6 @@ fn walk<P: AsRef<Path>>(root: P) -> std::io::Result<Vec<PathBuf>> {
             for child in std::fs::read_dir(&entry)? {
                 stack.push(child?.path());
             }
-        } else {
-            continue;
         }
     }
 
@@ -32,13 +32,14 @@ fn walk<P: AsRef<Path>>(root: P) -> std::io::Result<Vec<PathBuf>> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
     use std::fs;
     use tempfile::tempdir;
 
-    /// helper: create file, return its PathBuf
+    /// helper: create file, return its `PathBuf`
     fn touch<P: AsRef<Path>>(p: P) -> PathBuf {
         fs::File::create(&p).unwrap();
         p.as_ref().to_path_buf()
@@ -108,6 +109,8 @@ mod tests {
 
     #[test]
     fn walk_non_existing_path_propagates_error() {
+        // println!("This is stdout");
+        // eprintln!("This is stderr");
         let err = walk("/path/does/not/exist").unwrap_err();
         assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
     }
