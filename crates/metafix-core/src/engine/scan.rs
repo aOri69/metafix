@@ -6,8 +6,14 @@ use crate::{Error, ScanReport};
 pub fn run(path: &Path) -> Result<ScanReport, Error> {
     println!("scanning from core");
     println!("{}", path.to_str().unwrap_or_default());
-    let _files = walk(path)?;
-    // dbg!(files);
+    let (media, supplementary): (Vec<PathBuf>, Vec<PathBuf>) =
+        walk(path)?.into_iter().partition(|p| {
+            p.extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+        });
+
+    dbg!(media);
+    dbg!(supplementary);
     Ok(ScanReport::default())
 }
 
@@ -33,6 +39,7 @@ fn walk<P: AsRef<Path>>(root: P) -> std::io::Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
+#[allow(clippy::todo)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
@@ -60,12 +67,13 @@ mod tests {
         fs::File::create(root.join("photo6.heic"))?;
         fs::File::create(root.join("photo4.jpg.supplemental-metadata.json"))?;
 
-        let report = run(root)?;
+        let _report = run(root)?;
 
-        assert_eq!(report.stats.images, 6);
-        assert_eq!(report.files.len(), 2);
+        todo!("finish this test or remove");
+        // assert_eq!(report.stats.images, 6);
+        // assert_eq!(report.files.len(), 2);
 
-        Ok(())
+        // Ok(())
     }
 
     #[test]
