@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use crate::{Error, ScanReport};
+use crate::{ScanReport, engine::EngineError};
 
 /// Internal implementation, accessed only through `api::scan::scan`.
-pub fn run(path: &Path) -> Result<ScanReport, Error> {
+pub fn run(path: &Path) -> Result<ScanReport, EngineError> {
     println!("scanning from core");
     println!("{}", path.to_str().unwrap_or_default());
     let (media, supplementary): (Vec<PathBuf>, Vec<PathBuf>) =

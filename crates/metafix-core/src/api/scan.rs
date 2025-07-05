@@ -82,5 +82,5 @@ pub fn scan<P>(root: P) -> Result<ScanReport, Error>
 where
     P: AsRef<std::path::Path>,
 {
-    engine::scan::run(root.as_ref())
+    Ok(engine::scan::run(root.as_ref())?)
 }

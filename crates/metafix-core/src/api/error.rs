@@ -4,6 +4,8 @@
 
 use thiserror::Error;
 
+use crate::{engine::EngineError, parser::ParseError};
+
 /// Main error structure.
 ///
 /// A combination of all internal errors converted to the single struct.
@@ -12,7 +14,10 @@ use thiserror::Error;
 /// `Display` and `Error` implementations are derived via `thiserror`.
 #[derive(Error, Debug)]
 pub enum Error {
-    /// Wrapper for I/O errors.
+    /// All internal engine errors.
     #[error(transparent)]
-    Io(#[from] std::io::Error),
+    Engine(#[from] EngineError),
+    /// All parser errors combined
+    #[error(transparent)]
+    Parse(#[from] ParseError),
 }
