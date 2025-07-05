@@ -63,7 +63,7 @@ pub struct ScanReport {
     pub warnings: Vec<String>,
 }
 
-/// Recursively scans the given root directory for media and JSON files,
+/// Iteratively scans the given root directory for media and JSON files,
 /// returning a [`ScanReport`] with all discovered information.
 ///
 /// # Errors
