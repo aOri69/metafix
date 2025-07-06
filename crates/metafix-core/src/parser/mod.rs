@@ -12,5 +12,5 @@ pub enum ParseError {
 pub trait FileParser {
     type Output;
 
-    fn parse(&self, path: &Path) -> Result<Self::Output, ParseError>;
+    fn parse(path: &Path) -> Result<Self::Output, ParseError>;
 }

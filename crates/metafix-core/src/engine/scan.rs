@@ -1,20 +1,55 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
-use crate::{ScanReport, engine::EngineError};
+use crate::{
+    ScanReport,
+    engine::EngineError,
+    parser::{FileParser, json::JsonParser},
+};
 
 /// Internal implementation, accessed only through `api::scan::scan`.
 pub fn run(path: &Path) -> Result<ScanReport, EngineError> {
     println!("scanning from core");
     println!("{}", path.to_str().unwrap_or_default());
-    let (media, supplementary): (Vec<PathBuf>, Vec<PathBuf>) =
+
+    let (supplementary, media): (Vec<PathBuf>, Vec<PathBuf>) =
         walk(path)?.into_iter().partition(|p| {
             p.extension()
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
         });
 
-    dbg!(media);
-    dbg!(supplementary);
-    Ok(ScanReport::default())
+    let lookup_file_to_json = supplementary_to_lookup(supplementary);
+
+    let mut result = ScanReport::new();
+    for media_file in media {
+        let json = lookup_file_to_json
+            .get(&media_file)
+            .and_then(|p| JsonParser::parse(p).ok());
+
+        result.add_file(media_file, json);
+    }
+    dbg!(&result);
+    Ok(result)
+}
+
+fn supplementary_to_lookup(v: Vec<PathBuf>) -> HashMap<PathBuf, PathBuf> {
+    let mut result = HashMap::new();
+
+    for p in v {
+        if let Some(changed_value) = supplementary_to_filename(&p) {
+            result.insert(changed_value, p);
+        }
+    }
+
+    result
+}
+
+fn supplementary_to_filename(p: &Path) -> Option<PathBuf> {
+    let file_name = p.file_name()?.to_str()?;
+    let stripped_file_name = file_name.strip_suffix(".supplemental-metadata.json")?;
+    Some(p.with_file_name(stripped_file_name))
 }
 
 fn walk<P: AsRef<Path>>(root: P) -> std::io::Result<Vec<PathBuf>> {
@@ -43,8 +78,44 @@ fn walk<P: AsRef<Path>>(root: P) -> std::io::Result<Vec<PathBuf>> {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
-    use std::fs;
+    use std::{fs, io::Write};
     use tempfile::tempdir;
+
+    const TEST_JSON: &str = r#"
+{
+  "title": "IMG_1678.HEIC",
+  "description": "",
+  "imageViews": "0",
+  "creationTime": {
+    "timestamp": "1747494995",
+    "formatted": "17 May 2025, 15:16:35 UTC"
+  },
+  "photoTakenTime": {
+    "timestamp": "1738950318",
+    "formatted": "7 Feb 2025, 17:45:18 UTC"
+  },
+  "geoData": {
+    "latitude": 31.690999999999995,
+    "longitude": -0.41769999999999996,
+    "altitude": 104.7,
+    "latitudeSpan": 0.0,
+    "longitudeSpan": 0.0
+  },
+  "geoDataExif": {
+    "latitude": 31.690999999999995,
+    "longitude": -0.41769999999999996,
+    "altitude": 104.7,
+    "latitudeSpan": 0.0,
+    "longitudeSpan": 0.0
+  },
+  "url": "https://photos.google.com/photo/verycomplicatedurl",
+  "googlePhotosOrigin": {
+    "mobileUpload": {
+      "deviceType": "IOS_PHONE"
+    }
+  }
+}
+"#;
 
     /// helper: create file, return its `PathBuf`
     fn touch<P: AsRef<Path>>(p: P) -> PathBuf {
@@ -58,22 +129,28 @@ mod tests {
         let root = dir.path();
         fs::create_dir(root.join("sub_dir"))?;
         fs::File::create(root.join("sub_dir").join("photo1.jpg"))?;
-        fs::File::create(root.join("photo1.jpg.supplemental-metadata.json"))?;
+        let mut f = fs::File::create(
+            root.join("sub_dir")
+                .join("photo1.jpg.supplemental-metadata.json"),
+        )?;
+        f.write_all(TEST_JSON.as_bytes())?;
         fs::File::create(root.join("sub_dir").join("photo2.tiff"))?;
         fs::File::create(root.join("sub_dir").join("photo3.heic"))?;
         fs::File::create(root.join("photo4.jpg"))?;
+        let mut f = fs::File::create(root.join("photo4.jpg.supplemental-metadata.json"))?;
+        f.write_all(TEST_JSON.as_bytes())?;
         fs::File::create(root.join("photo5.tiff"))?;
-        fs::File::create(root.join("photo5.tiff.supplemental-metadata.json"))?;
+        let mut f = fs::File::create(root.join("photo5.tiff.supplemental-metadata.json"))?;
+        f.write_all(TEST_JSON.as_bytes())?;
         fs::File::create(root.join("photo6.heic"))?;
-        fs::File::create(root.join("photo4.jpg.supplemental-metadata.json"))?;
 
-        let _report = run(root)?;
+        let report = run(root)?;
 
-        todo!("finish this test or remove");
-        // assert_eq!(report.stats.images, 6);
-        // assert_eq!(report.files.len(), 2);
+        // todo!("finish this test or remove");
+        assert_eq!(report.stats.images, 6);
+        assert_eq!(report.files.len(), 2);
 
-        // Ok(())
+        Ok(())
     }
 
     #[test]

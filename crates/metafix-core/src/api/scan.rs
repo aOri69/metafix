@@ -15,7 +15,7 @@
 
 use std::path::PathBuf;
 
-use crate::{Error, engine};
+use crate::{Error, engine, parser::json::GoogleTakeoutJson};
 
 /// Information about a single media file discovered during scanning.
 ///
@@ -26,9 +26,7 @@ pub struct FileEntry {
     /// Absolute path to the media file.
     pub path: PathBuf,
     /// Whether a related JSON metadata file was found.
-    pub has_json: bool,
-    /// File size in bytes.
-    pub size: u64,
+    pub json: Option<GoogleTakeoutJson>,
 }
 /// Aggregated statistics about the scan operation.
 ///
@@ -55,12 +53,21 @@ pub struct ScanStats {
 pub struct ScanReport {
     /// List of all media files found.
     pub files: Vec<FileEntry>,
-    /// JSON files not matched to any media file.
-    pub orphan_json: Vec<PathBuf>,
     /// Aggregated statistics for the scan.
     pub stats: ScanStats,
     /// Any warnings or non-fatal errors encountered.
     pub warnings: Vec<String>,
+}
+
+impl ScanReport {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn add_file(&mut self, path: PathBuf, json: Option<GoogleTakeoutJson>) {
+        self.files.push(FileEntry { path, json });
+        self.stats.total += 1;
+    }
 }
 
 /// Iteratively scans the given root directory for media and JSON files,

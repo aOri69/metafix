@@ -45,7 +45,7 @@ pub struct JsonParser;
 impl super::FileParser for JsonParser {
     type Output = GoogleTakeoutJson;
 
-    fn parse(&self, path: &std::path::Path) -> Result<Self::Output, ParseError> {
+    fn parse(path: &std::path::Path) -> Result<Self::Output, ParseError> {
         let file = File::open(path).map_err(JsonError::Io)?;
         let reader = BufReader::new(file);
         let r: GoogleTakeoutJson = serde_json::from_reader(reader).map_err(JsonError::Serde)?;
@@ -116,8 +116,7 @@ mod tests {
     fn parses_valid_json_file() {
         let file_path = write_json_file(TEST_JSON);
 
-        let parser = JsonParser {};
-        let result = parser.parse(&file_path.0);
+        let result = JsonParser::parse(&file_path.0);
         drop(file_path.1);
         let parsed = result.unwrap();
         let result: GoogleTakeoutJson = parsed;
@@ -151,8 +150,7 @@ mod tests {
     fn returns_error_on_invalid_json() {
         let file_path = write_json_file("{ this is not valid json }");
 
-        let parser = JsonParser {};
-        let result = parser.parse(&file_path.0);
+        let result = JsonParser::parse(&file_path.0);
         drop(file_path.1);
 
         assert!(result.is_err());
@@ -160,8 +158,7 @@ mod tests {
 
     #[test]
     fn returns_error_on_missing_file() {
-        let parser = JsonParser {};
-        let result = parser.parse(Path::new("nonexistent_file.json"));
+        let result = JsonParser::parse(Path::new("nonexistent_file.json"));
 
         assert!(result.is_err());
     }
