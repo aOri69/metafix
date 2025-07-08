@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     ScanReport,
-    engine::EngineError,
+    engine::{EngineError, media::parse_media_file},
     parser::{FileParser, json::JsonParser},
 };
 
@@ -22,15 +22,19 @@ pub fn run(path: &Path) -> Result<ScanReport, EngineError> {
 
     let lookup_file_to_json = supplementary_to_lookup(supplementary);
 
+    // Main loop with parsing
     let mut result = ScanReport::new();
     for media_file in media {
+        // JSON parser was separated from media
         let json = lookup_file_to_json
             .get(&media_file)
             .and_then(|p| JsonParser::parse(p).ok());
-
+        // Metadata getters
+        let _metadata = parse_media_file(&media_file);
         result.add_file(media_file, json);
+        todo!("metadata should be passed to the result setter");
     }
-    dbg!(&result);
+    // dbg!(&result);
     Ok(result)
 }
 
