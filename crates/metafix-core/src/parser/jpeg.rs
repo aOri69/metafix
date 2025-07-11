@@ -6,6 +6,8 @@ use crate::parser::{FileParser, ParseError};
 pub enum JpegError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("Other error: {0}")]
+    Other(String),
 }
 
 #[derive(Debug)]
@@ -15,7 +17,8 @@ pub struct Parser;
 impl FileParser for Parser {
     type Output = Meta;
 
-    fn parse(_path: &std::path::Path) -> Result<Self::Output, ParseError> {
-        todo!("JPEG parser")
+    fn parse(path: &std::path::Path) -> Result<Self::Output, ParseError> {
+        // todo!("JPEG parser")
+        Err(ParseError::WrongType(path.to_path_buf()))
     }
 }
