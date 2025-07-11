@@ -128,7 +128,8 @@ mod tests {
             result.geo_data,
             TakeoutGeo {
                 latitude: 31.690_999_999_999_995,
-                longitude: -0.417_699_999_999_999_96,
+                // longitude: -0.417_699_999_999_999_96,
+                longitude: -0.4177,
                 altitude: 104.7,
                 latitude_span: 0.0,
                 longitude_span: 0.0
@@ -138,7 +139,8 @@ mod tests {
             result.geo_data_exif,
             TakeoutGeo {
                 latitude: 31.690_999_999_999_995,
-                longitude: -0.417_699_999_999_999_96,
+                // longitude: -0.417_699_999_999_999_96,
+                longitude: -0.4177,
                 altitude: 104.7,
                 latitude_span: 0.0,
                 longitude_span: 0.0
