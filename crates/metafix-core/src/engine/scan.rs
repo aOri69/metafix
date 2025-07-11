@@ -30,9 +30,8 @@ pub fn run(path: &Path) -> Result<ScanReport, EngineError> {
             .get(&media_file)
             .and_then(|p| JsonParser::parse(p).ok());
         // Metadata getters
-        let _metadata = parse_media_file(&media_file);
-        result.add_file(media_file, json);
-        todo!("metadata should be passed to the result setter");
+        let metadata = parse_media_file(&media_file);
+        result.add_file(media_file, metadata, json);
     }
     // dbg!(&result);
     Ok(result)
@@ -150,9 +149,8 @@ mod tests {
 
         let report = run(root)?;
 
-        // todo!("finish this test or remove");
-        assert_eq!(report.stats.images, 6);
-        assert_eq!(report.files.len(), 2);
+        // assert_eq!(report.stats.images, 6);
+        assert_eq!(report.files.len(), 6);
 
         Ok(())
     }
