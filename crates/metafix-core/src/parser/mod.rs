@@ -10,6 +10,12 @@ pub mod tiff;
 pub enum ParseError {
     #[error(transparent)]
     Json(#[from] json::JsonError),
+    #[error(transparent)]
+    Jpeg(#[from] jpeg::JpegError),
+    #[error(transparent)]
+    Heic(#[from] heic::HeicError),
+    #[error(transparent)]
+    Tiff(#[from] tiff::TiffError),
     #[error("Wrong file type passed to the parser `{0}`")]
     WrongType(PathBuf),
 }
