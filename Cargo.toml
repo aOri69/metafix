@@ -31,3 +31,4 @@ anyhow = { version = "1.0.98" }
 tempfile = {version = "3.20.0"}
 pretty_assertions = "1.4.1"
 rstest = "0.25.0"
+fs_extra = "1.3.0"

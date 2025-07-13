@@ -112,8 +112,21 @@ mod tests {
         (file_path, dir)
     }
 
+    /// Approximation for geodata
+    /// Epsilon ~0.11 m
+    const GEO_EPS: f64 = 1e-6;
+
+    /// # Epsilon check
+    /// This function compares two [f64] numbers
+    /// and returns aproximate equal result
+    fn aprox_eq(a: f64, b: f64, eps: f64) -> bool {
+        (a - b).abs() < eps
+    }
+
     #[test]
     fn parses_valid_json_file() {
+        const DEMO_LATITUDE: f64 = 31.690_999_999_999_995_f64;
+        const DEMO_LONGITUDE: f64 = -0.417_699_999_999_999_96_f64;
         let file_path = write_json_file(TEST_JSON);
 
         let result = JsonParser::parse(&file_path.0);
@@ -124,28 +137,34 @@ mod tests {
         assert_eq!(result.title, "IMG_1678.HEIC");
         assert_eq!(result.creation_time.timestamp, "1747494995");
         assert_eq!(result.photo_taken_time.timestamp, "1738950318");
-        assert_eq!(
-            result.geo_data,
-            TakeoutGeo {
-                latitude: 31.690_999_999_999_995,
-                // longitude: -0.417_699_999_999_999_96,
-                longitude: -0.4177,
-                altitude: 104.7,
-                latitude_span: 0.0,
-                longitude_span: 0.0
-            }
-        );
-        assert_eq!(
-            result.geo_data_exif,
-            TakeoutGeo {
-                latitude: 31.690_999_999_999_995,
-                // longitude: -0.417_699_999_999_999_96,
-                longitude: -0.4177,
-                altitude: 104.7,
-                latitude_span: 0.0,
-                longitude_span: 0.0
-            }
-        );
+
+        assert!(aprox_eq(result.geo_data.latitude, DEMO_LATITUDE, GEO_EPS,));
+        assert!(aprox_eq(result.geo_data.longitude, DEMO_LONGITUDE, GEO_EPS,));
+        assert!(aprox_eq(result.geo_data.altitude, 104.7_f64, GEO_EPS));
+        assert!(aprox_eq(result.geo_data.latitude_span, 0.0_f64, GEO_EPS));
+        assert!(aprox_eq(result.geo_data.longitude_span, 0.0_f64, GEO_EPS));
+
+        assert!(aprox_eq(
+            result.geo_data_exif.latitude,
+            DEMO_LATITUDE,
+            GEO_EPS,
+        ));
+        assert!(aprox_eq(
+            result.geo_data_exif.longitude,
+            DEMO_LONGITUDE,
+            GEO_EPS,
+        ));
+        assert!(aprox_eq(result.geo_data_exif.altitude, 104.7_f64, GEO_EPS));
+        assert!(aprox_eq(
+            result.geo_data_exif.latitude_span,
+            0.0_f64,
+            GEO_EPS
+        ));
+        assert!(aprox_eq(
+            result.geo_data_exif.longitude_span,
+            0.0_f64,
+            GEO_EPS
+        ));
     }
 
     #[test]

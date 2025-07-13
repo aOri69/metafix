@@ -5,3 +5,8 @@
 pub mod error;
 pub mod prelude; // simple re-exports
 pub mod scan;
+
+pub use {
+    error::Error,
+    scan::{ScanReport, scan},
+};
