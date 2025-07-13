@@ -3,11 +3,21 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use thiserror::Error;
+
 use crate::{
     ScanReport,
     engine::{EngineError, media::parse_media_file},
-    parser::{FileParser, json::JsonParser},
+    parser::{FileParser, ParseError, json::JsonParser},
 };
+
+#[derive(Error, Debug)]
+pub enum ScanError {
+    #[error("Supplementary JSON not found for media `{0}`")]
+    JsonNotFound(PathBuf),
+    #[error(transparent)]
+    Parser(#[from] ParseError),
+}
 
 /// Internal implementation, accessed only through `api::scan::scan`.
 pub fn run(path: &Path) -> Result<ScanReport, EngineError> {
@@ -28,12 +38,14 @@ pub fn run(path: &Path) -> Result<ScanReport, EngineError> {
         // JSON parser was separated from media
         let json = lookup_file_to_json
             .get(&media_file)
-            .and_then(|p| JsonParser::parse(p).ok());
+            .ok_or(ScanError::JsonNotFound(media_file.clone()))
+            .and_then(|p| JsonParser::parse(p).map_err(ScanError::Parser))
+            .map_err(|e| crate::api::Error::Engine(EngineError::Scan(e)));
         // Metadata getters
-        let metadata = parse_media_file(&media_file);
+        let metadata = parse_media_file(&media_file)
+            .map_err(|e| crate::api::Error::Engine(EngineError::Scan(ScanError::Parser(e))));
         result.add_file(media_file, metadata, json);
     }
-    // dbg!(&result);
     Ok(result)
 }
 

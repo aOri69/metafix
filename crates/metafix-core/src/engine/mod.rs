@@ -9,4 +9,7 @@ pub enum EngineError {
     /// Wrapper for I/O errors.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    /// Wrapper for I/O errors.
+    #[error(transparent)]
+    Scan(#[from] scan::ScanError),
 }

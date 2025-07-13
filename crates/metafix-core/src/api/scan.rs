@@ -21,7 +21,7 @@ use std::path::PathBuf;
 
 use crate::{
     Error, engine,
-    parser::{MediaMeta, ParseError, json::GoogleTakeoutJson},
+    parser::{MediaMeta, json::GoogleTakeoutJson},
 };
 
 /// Information about a single media file discovered during scanning.
@@ -38,30 +38,19 @@ pub struct FileEntry {
     /// Absolute path to the media file.
     pub path: PathBuf,
     /// Metadata from the mediafile
-    pub meta: Result<MediaMeta, ParseError>,
+    pub meta: Result<MediaMeta, Error>,
     /// Whether a related JSON metadata file was found.
-    pub json: Option<GoogleTakeoutJson>,
+    pub json: Result<GoogleTakeoutJson, Error>,
 }
 /// Aggregated statistics about the scan operation.
 ///
 /// Tracks:
 /// - Total number of media files found.
-/// - Number of image files.
-/// - Number of video files.
-/// - Number of JSON files without a matching media file.
-/// - Total bytes of all media files.
+///
 #[derive(Debug, Default)]
 pub struct ScanStats {
     /// Total number of media files found.
     pub total: usize,
-    /// Number of image files.
-    pub images: usize,
-    /// Number of video files.
-    pub videos: usize,
-    /// Number of JSON files without a matching media file.
-    pub orphan_json: usize,
-    /// Total bytes of all media files.
-    pub bytes: u64,
 }
 
 /// The complete result of a directory scan.
@@ -101,8 +90,8 @@ impl ScanReport {
     pub(crate) fn add_file(
         &mut self,
         path: PathBuf,
-        meta: Result<MediaMeta, ParseError>,
-        json: Option<GoogleTakeoutJson>,
+        meta: Result<MediaMeta, Error>,
+        json: Result<GoogleTakeoutJson, Error>,
     ) {
         self.files.push(FileEntry { path, meta, json });
         self.stats.total += 1;
