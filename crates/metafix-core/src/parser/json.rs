@@ -37,7 +37,7 @@ pub struct GoogleTakeoutJson {
     creation_time: TakeoutTime,
     photo_taken_time: TakeoutTime,
     geo_data: TakeoutGeo,
-    geo_data_exif: TakeoutGeo,
+    geo_data_exif: Option<TakeoutGeo>,
 }
 
 pub struct JsonParser;
@@ -144,27 +144,13 @@ mod tests {
         assert!(aprox_eq(result.geo_data.latitude_span, 0.0_f64, GEO_EPS));
         assert!(aprox_eq(result.geo_data.longitude_span, 0.0_f64, GEO_EPS));
 
-        assert!(aprox_eq(
-            result.geo_data_exif.latitude,
-            DEMO_LATITUDE,
-            GEO_EPS,
-        ));
-        assert!(aprox_eq(
-            result.geo_data_exif.longitude,
-            DEMO_LONGITUDE,
-            GEO_EPS,
-        ));
-        assert!(aprox_eq(result.geo_data_exif.altitude, 104.7_f64, GEO_EPS));
-        assert!(aprox_eq(
-            result.geo_data_exif.latitude_span,
-            0.0_f64,
-            GEO_EPS
-        ));
-        assert!(aprox_eq(
-            result.geo_data_exif.longitude_span,
-            0.0_f64,
-            GEO_EPS
-        ));
+        let geo_data_exif = result.geo_data_exif.unwrap();
+
+        assert!(aprox_eq(geo_data_exif.latitude, DEMO_LATITUDE, GEO_EPS,));
+        assert!(aprox_eq(geo_data_exif.longitude, DEMO_LONGITUDE, GEO_EPS,));
+        assert!(aprox_eq(geo_data_exif.altitude, 104.7_f64, GEO_EPS));
+        assert!(aprox_eq(geo_data_exif.latitude_span, 0.0_f64, GEO_EPS));
+        assert!(aprox_eq(geo_data_exif.longitude_span, 0.0_f64, GEO_EPS));
     }
 
     #[test]
