@@ -14,3 +14,17 @@ fn scan_all_json() -> Result<(), metafix_core::Error> {
 
     Ok(())
 }
+
+#[test]
+fn scan_empty_folder() -> Result<(), metafix_core::Error> {
+    // arrange
+    let tmp = metafix_test_fixtures::get_dir_with_fixtures("empty_album").unwrap();
+    let root = tmp.path();
+    // act
+    let report = metafix_core::api::scan::scan(root)?;
+    // assert
+    assert!(report.files.is_empty());
+    assert!(report.warnings.is_empty());
+
+    Ok(())
+}
