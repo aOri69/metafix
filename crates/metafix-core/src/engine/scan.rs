@@ -21,9 +21,6 @@ pub enum ScanError {
 
 /// Internal implementation, accessed only through `api::scan::scan`.
 pub fn run(path: &Path) -> Result<ScanReport, EngineError> {
-    println!("scanning from core");
-    println!("{}", path.to_str().unwrap_or_default());
-
     let (supplementary, media): (Vec<PathBuf>, Vec<PathBuf>) =
         walk(path)?.into_iter().partition(|p| {
             p.extension()
@@ -208,8 +205,6 @@ mod tests {
 
     #[test]
     fn walk_non_existing_path_propagates_error() {
-        // println!("This is stdout");
-        // eprintln!("This is stderr");
         let err = walk("/path/does/not/exist").unwrap_err();
         assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
     }
