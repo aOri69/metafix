@@ -5,7 +5,6 @@ fn scan_all_json() -> Result<(), metafix_core::Error> {
     // arrange
     let tmp = metafix_test_fixtures::get_dir_with_fixtures("simple_album").unwrap();
     let root = tmp.path();
-    dbg!(&root);
     // act
     let report = metafix_core::api::scan::scan(root)?;
     // assert

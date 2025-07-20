@@ -49,7 +49,6 @@ impl super::FileParser for JsonParser {
         let file = File::open(path).map_err(JsonError::Io)?;
         let reader = BufReader::new(file);
         let r: GoogleTakeoutJson = serde_json::from_reader(reader).map_err(JsonError::Serde)?;
-        // dbg!(&r);
         Ok(r)
     }
 }
