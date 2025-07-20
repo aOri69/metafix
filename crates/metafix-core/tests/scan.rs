@@ -1,11 +1,9 @@
-mod util;
-
 use pretty_assertions::assert_eq;
 
 #[test]
 fn scan_all_json() -> Result<(), metafix_core::Error> {
     // arrange
-    let tmp = util::sample_dir("simple_album");
+    let tmp = metafix_test_fixtures::get_dir_with_fixtures("simple_album").unwrap();
     let root = tmp.path();
     dbg!(&root);
     // act

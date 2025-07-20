@@ -13,15 +13,14 @@ categories.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-rstest.workspace = true
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = {version = "1.0.140"}
 thiserror.workspace = true
 
 [dev-dependencies]
-tempfile.workspace = true
 pretty_assertions.workspace = true
-fs_extra.workspace = true
+tempfile.workspace = true
+metafix-test-fixtures = { path = "../metafix-test-fixtures" }
 
 # [lints.clippy]
 # all = "warn"

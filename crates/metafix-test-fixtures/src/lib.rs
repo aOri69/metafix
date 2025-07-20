@@ -9,19 +9,17 @@
 use std::path::Path;
 use tempfile::TempDir;
 
-#[must_use]
 /// # Panics
 /// - `TempDir` could not be created
 /// - `fs_extra::dir::copy` failed
-pub fn sample_dir(sample_name: &str) -> TempDir {
-    let tmp = tempfile::tempdir().expect("Expected to create temproary dir");
+pub fn get_dir_with_fixtures(fixture_name: &str) -> anyhow::Result<TempDir> {
+    let tmp = tempfile::tempdir()?;
     let src = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
         .join("fixtures")
-        .join(sample_name);
+        .join(fixture_name);
     fs_extra::dir::copy(&src, &tmp, &fs_extra::dir::CopyOptions::new())
-        .unwrap_or_else(|_| panic!("Expected to copy sample dir {src:?} to {tmp:?}"));
-    tmp
+        .map_err(|e| anyhow::anyhow!("Failed to copy fixture dir {src:?} to {tmp:?}: {e}"))?;
+    Ok(tmp)
 }
 
 /// Approximation for geodata
