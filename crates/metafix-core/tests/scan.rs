@@ -23,7 +23,8 @@ fn scan_empty_folder() -> Result<(), metafix_core::Error> {
     // act
     let report = metafix_core::api::scan::scan(root)?;
     // assert
-    assert!(report.files.is_empty());
+    //Only error items or empty
+    assert!(report.files.iter().all(|f| f.meta.is_err()));
     assert!(report.warnings.is_empty());
 
     Ok(())

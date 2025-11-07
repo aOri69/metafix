@@ -22,4 +22,4 @@ target/
 
 /.vscode
 bacon.toml
-**/fixtures
+# **/fixtures
