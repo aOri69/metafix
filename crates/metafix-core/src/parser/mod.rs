@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+pub(super) mod exif;
 pub mod heic;
 pub mod jpeg;
 pub mod json;
