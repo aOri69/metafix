@@ -49,7 +49,6 @@ pub struct ExifSegment<'a> {
     tags_amount: usize,
     data: &'a [u8],
     tags: Vec<&'a [u8]>,
-    vtags: Vec<ExifTag>,
 }
 
 impl std::fmt::Debug for ExifSegment<'_> {
@@ -113,7 +112,7 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
             _ => return Err(ExifError::Other("Wrong endian array of bytes".to_owned())),
         };
 
-        let (signature, ifd0_offset, tags_amount, tags, vtags) = match endian {
+        let (signature, ifd0_offset, tags_amount, tags) = match endian {
             Endian::Big => {
                 let signature =
                     u16::from_be_bytes([file_data[tiff_start + 2], file_data[tiff_start + 3]]);
@@ -129,7 +128,6 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
                 ]) as usize;
 
                 let mut tags = Vec::with_capacity(tags_amount);
-                let mut vtags = Vec::with_capacity(tags_amount);
                 let ifd0_start = tiff_start + ifd0_offset as usize + 2;
                 for tag_number in 0..tags_amount {
                     let tag_start = ifd0_start + tag_number * 12;
@@ -137,7 +135,7 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
                     tags.push(&file_data[tag_start..tag_end]);
                 }
 
-                (signature, ifd0_offset, tags_amount, tags, vtags)
+                (signature, ifd0_offset, tags_amount, tags)
             }
             Endian::Little => {
                 let signature =
@@ -154,33 +152,46 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
                 ]) as usize;
 
                 let mut tags = Vec::with_capacity(tags_amount);
-                let mut vtags = Vec::with_capacity(tags_amount);
                 let ifd0_start = tiff_start + ifd0_offset as usize + 2;
                 for tag_number in 0..tags_amount {
                     let tag_start = ifd0_start + tag_number * EXIF_TAG_LEN;
                     let tag_end = ifd0_start + tag_number * EXIF_TAG_LEN + EXIF_TAG_LEN;
                     tags.push(&file_data[tag_start..tag_end]);
 
-                    let tag = ExifTag {
-                        id: [file_data[tag_start], file_data[tag_start + 1]],
-                        data_type: TagType::try_from(u16::from_le_bytes([
-                            file_data[tag_start + 2],
-                            file_data[tag_start + 2 + 1],
-                        ]))
-                        .unwrap(),
-                        count: [
-                            file_data[tag_start + 4],
-                            file_data[tag_start + 4 + 1],
-                            file_data[tag_start + 4 + 2],
-                            file_data[tag_start + 4 + 3],
-                        ],
-                        value_offset: Default::default(),
-                        value: Default::default(),
+                    let id = [file_data[tag_start], file_data[tag_start + 1]];
+                    let data_type = TagType::try_from(u16::from_le_bytes([
+                        file_data[tag_start + 2],
+                        file_data[tag_start + 2 + 1],
+                    ]))
+                    .unwrap();
+                    let count = u32::from_le_bytes([
+                        file_data[tag_start + 4],
+                        file_data[tag_start + 4 + 1],
+                        file_data[tag_start + 4 + 2],
+                        file_data[tag_start + 4 + 3],
+                    ]) as usize;
+                    let value = if data_type.size() * count as usize > 4 {
+                        let value_offset = u32::from_le_bytes([
+                            file_data[tag_start + 8],
+                            file_data[tag_start + 9],
+                            file_data[tag_start + 10],
+                            file_data[tag_start + 11],
+                        ]) as usize;
+                        &file_data[tiff_start + value_offset..tiff_start + value_offset + count]
+                    } else {
+                        &file_data[tag_start + 8..tag_end]
                     };
-                    vtags.push(tag);
+
+                    println!("{:?}, {:?}, {}", id, data_type, count);
+                    let v = value
+                        .iter()
+                        .map(|b| format!("{:02X}", b))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    println!("{}", v);
                 }
 
-                (signature, ifd0_offset, tags_amount, tags, vtags)
+                (signature, ifd0_offset, tags_amount, tags)
             }
         };
 
@@ -201,7 +212,6 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
             tags_amount,
             data,
             tags,
-            vtags,
         })
     }
 }
@@ -210,6 +220,7 @@ fn calculate_length_from_bytes(bytes: [u8; 2]) -> usize {
     ((bytes[0] as usize) << 8) | (bytes[1] as usize)
 }
 
+#[derive(Debug)]
 enum TagType {
     Byte = 1,
     Ascii = 2,
@@ -242,13 +253,21 @@ impl TryFrom<u16> for TagType {
 }
 
 impl TagType {
-    fn size(type_id: u16) -> usize {
-        match type_id {
-            1 | 2 | 7 => 1, // BYTE, ASCII, UNDEFINED
-            3 => 2,         // SHORT
-            4 | 9 => 4,     // LONG, SLONG
-            5 | 10 => 8,    // RATIONAL, SRATIONAL
-            _ => 0,         // неизвестный
+    /// 1 | 2 | 7 => 1, // BYTE, ASCII, UNDEFINED
+    /// 3 => 2,         // SHORT
+    /// 4 | 9 => 4,     // LONG, SLONG
+    /// 5 | 10 => 8,    // RATIONAL, SRATIONAL
+    /// _ => 0,         // Unknown...
+    pub fn size(&self) -> usize {
+        match self {
+            TagType::Byte => 1,
+            TagType::Ascii => 1,
+            TagType::Short => 2,
+            TagType::Long => 4,
+            TagType::Rational => 8,
+            TagType::Undefined => 1,
+            TagType::Slong => 4,
+            TagType::Srational => 8,
         }
     }
 }
