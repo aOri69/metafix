@@ -1,69 +1,30 @@
-use thiserror::Error;
+use crate::parser::exif::{
+    ByteOrder, EXIF_HEADER, EXIF_MARKER, EXIF_TAG_LEN, SEGMENT_START, TagType, VALID_SIGNATURE,
+    error::ExifError,
+};
 
-const SEGMENT_START: u8 = 0xFF;
-// const JFIF_MARKER: u8 = 0xE0;
-const EXIF_MARKER: u8 = 0xE1;
-const EXIF_HEADER: &[u8; 6] = b"Exif\0\0";
-const VALID_SIGNATURE: u16 = 0x002A;
-const EXIF_TAG_LEN: usize = 12;
-
-#[derive(Error, Debug)]
-pub enum ExifError {
-    // #[error(transparent)]
-    // Io(#[from] std::io::Error),
-    #[error("{0} Segment marker not found")]
-    MarkerNotFound(u8),
-    #[error("Exif\\0\\0 not found")]
-    ExifStartNotFound,
-    #[error("Wrong endian: {0:02X} {1:02X} ")]
-    WrongEndian(u8, u8),
-    #[error("Wrong TIFF signature: {0:02X} ")]
-    WrongSignature(u16),
-    #[error("Unknown IFD tag: {0}")]
-    UnknownIfdTag(u16),
-    #[error("Other error: {0}")]
-    Other(String),
-}
-
-enum Endian {
-    Big,
-    Little,
-}
-
-impl std::fmt::Debug for Endian {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Big => write!(f, "Big"),
-            Self::Little => write!(f, "Little"),
-        }
-    }
-}
-
-pub struct ExifSegment<'a> {
+pub struct ExifSegment {
     start: usize,
     tiff_start: usize,
     len: usize,
-    endian: Endian,
+    endian: ByteOrder,
     ifd0_offset: usize,
     ifd0_start: usize,
     tags_amount: usize,
-    data: &'a [u8],
-    tags: Vec<&'a [u8]>,
+    tags: Vec<[u8; 12]>,
 }
 
-impl std::fmt::Debug for ExifSegment<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl std::fmt::Debug for ExifSegment {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let tags_str = self
             .tags
             .iter()
             .map(|byte| {
-                format!(
-                    "{}",
-                    byte.iter()
-                        .map(|b| format!("{:02X}", b))
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                )
+                byte.iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                    .to_string()
             })
             .collect::<Vec<_>>();
 
@@ -81,21 +42,20 @@ impl std::fmt::Debug for ExifSegment<'_> {
     }
 }
 
-impl ExifSegment<'_> {}
+impl ExifSegment {}
 
-impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
+impl<'a> TryFrom<&'a [u8]> for ExifSegment {
     type Error = ExifError;
 
     fn try_from(file_data: &'a [u8]) -> Result<Self, Self::Error> {
+        // APP1 segment
         let segment_position = file_data
             .windows(2)
             .position(|window| window == [SEGMENT_START, EXIF_MARKER])
             .ok_or(ExifError::MarkerNotFound(EXIF_MARKER))?;
-        // Next two bytes are the size of the segment will be the full length of APP1 segment
-        let len = calculate_length_from_bytes([
-            file_data[segment_position + 2],
-            file_data[segment_position + 2 + 1],
-        ]);
+        // Size of the segment will be the full length of APP1 segment
+        let segment_length = ((file_data[segment_position + 2] as usize) << 8)
+            | (file_data[segment_position + 2 + 1] as usize);
 
         let header = &file_data[segment_position + 4..segment_position + 10];
         if header != EXIF_HEADER {
@@ -103,17 +63,45 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
         }
 
         let tiff_start = segment_position + 2 + 2 + 6; // 2 - 0xFFE1 marker 2 - length field, 6 - "Exif\0\0"
-        let endian = match &file_data[tiff_start..tiff_start + 2] {
-            b"II" => Endian::Little,
-            b"MM" => Endian::Big,
-            [first_byte, second_byte, ..] => {
-                return Err(ExifError::WrongEndian(*first_byte, *second_byte));
-            }
-            _ => return Err(ExifError::Other("Wrong endian array of bytes".to_owned())),
-        };
+
+        let endian = ByteOrder::try_from(&file_data[tiff_start..tiff_start + 2])?;
+
+        let signature = endian.read_u16(
+            file_data
+                .get(tiff_start + 2..tiff_start + 4)
+                .ok_or(ExifError::Other("Cannot read EXIF signature"))?,
+        )?;
+        let ifd0_offset = endian.read_u32(
+            file_data
+                .get(tiff_start + 4..tiff_start + 8)
+                .ok_or(ExifError::Other("Cannot read EXIF IFD0 offset"))?,
+        )?;
+
+        println!("sig - {} ifd0 - {}", signature, ifd0_offset);
+
+        println!(
+            "{}",
+            file_data
+                .get(tiff_start + 2..tiff_start + 4)
+                .ok_or(ExifError::Other("Cannot read EXIF signature"))?
+                .iter()
+                .map(|b| format!("{:02X}", b))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+        println!(
+            "{}",
+            file_data
+                .get(tiff_start + 4..tiff_start + 8)
+                .ok_or(ExifError::Other("Cannot read EXIF IFD0 offset"))?
+                .iter()
+                .map(|b| format!("{:02X}", b))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
 
         let (signature, ifd0_offset, tags_amount, tags) = match endian {
-            Endian::Big => {
+            ByteOrder::BigEndian => {
                 let signature =
                     u16::from_be_bytes([file_data[tiff_start + 2], file_data[tiff_start + 3]]);
                 let ifd0_offset = u32::from_be_bytes([
@@ -128,16 +116,20 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
                 ]) as usize;
 
                 let mut tags = Vec::with_capacity(tags_amount);
-                let ifd0_start = tiff_start + ifd0_offset as usize + 2;
+                let ifd0_start = tiff_start + ifd0_offset + 2;
                 for tag_number in 0..tags_amount {
                     let tag_start = ifd0_start + tag_number * 12;
                     let tag_end = ifd0_start + tag_number * 12 + 12;
-                    tags.push(&file_data[tag_start..tag_end]);
+                    tags.push(
+                        file_data[tag_start..tag_end]
+                            .try_into()
+                            .expect("Expected to parse"),
+                    );
                 }
 
                 (signature, ifd0_offset, tags_amount, tags)
             }
-            Endian::Little => {
+            ByteOrder::LittleEndian => {
                 let signature =
                     u16::from_le_bytes([file_data[tiff_start + 2], file_data[tiff_start + 3]]);
                 let ifd0_offset = u32::from_le_bytes([
@@ -152,11 +144,15 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
                 ]) as usize;
 
                 let mut tags = Vec::with_capacity(tags_amount);
-                let ifd0_start = tiff_start + ifd0_offset as usize + 2;
+                let ifd0_start = tiff_start + ifd0_offset + 2;
                 for tag_number in 0..tags_amount {
                     let tag_start = ifd0_start + tag_number * EXIF_TAG_LEN;
                     let tag_end = ifd0_start + tag_number * EXIF_TAG_LEN + EXIF_TAG_LEN;
-                    tags.push(&file_data[tag_start..tag_end]);
+                    tags.push(
+                        file_data[tag_start..tag_end]
+                            .try_into()
+                            .expect("Expected to parse"),
+                    );
 
                     let id = [file_data[tag_start], file_data[tag_start + 1]];
                     let data_type = TagType::try_from(u16::from_le_bytes([
@@ -170,7 +166,7 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
                         file_data[tag_start + 4 + 2],
                         file_data[tag_start + 4 + 3],
                     ]) as usize;
-                    let value = if data_type.size() * count as usize > 4 {
+                    let value = if data_type.size() * count > 4 {
                         let value_offset = u32::from_le_bytes([
                             file_data[tag_start + 8],
                             file_data[tag_start + 9],
@@ -199,85 +195,20 @@ impl<'a> TryFrom<&'a [u8]> for ExifSegment<'a> {
             return Err(ExifError::WrongSignature(signature));
         }
 
-        let data = &file_data[segment_position + 4..segment_position + 4 + len];
+        let _data = &file_data[segment_position + 4..segment_position + 4 + segment_length];
 
         // Now it is a valid Exif segment
         Ok(Self {
             start: segment_position + 4,
             tiff_start,
-            len,
+            len: segment_length,
             endian,
             ifd0_offset,
-            ifd0_start: tiff_start + ifd0_offset as usize,
+            ifd0_start: tiff_start + ifd0_offset,
             tags_amount,
-            data,
             tags,
         })
     }
-}
-
-fn calculate_length_from_bytes(bytes: [u8; 2]) -> usize {
-    ((bytes[0] as usize) << 8) | (bytes[1] as usize)
-}
-
-#[derive(Debug)]
-enum TagType {
-    Byte = 1,
-    Ascii = 2,
-    Short = 3,
-    Long = 4,
-    Rational = 5,
-    Undefined = 7,
-    Slong = 9,
-    Srational = 10,
-}
-
-impl TryFrom<u16> for TagType {
-    type Error = ExifError;
-
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        Ok(match value {
-            1 => Self::Byte,
-            2 => Self::Ascii,
-            3 => Self::Short,
-            4 => Self::Long,
-            5 => Self::Rational,
-            7 => Self::Undefined,
-            9 => Self::Slong,
-            10 => Self::Srational,
-            val => {
-                return Err(ExifError::UnknownIfdTag(val));
-            }
-        })
-    }
-}
-
-impl TagType {
-    /// 1 | 2 | 7 => 1, // BYTE, ASCII, UNDEFINED
-    /// 3 => 2,         // SHORT
-    /// 4 | 9 => 4,     // LONG, SLONG
-    /// 5 | 10 => 8,    // RATIONAL, SRATIONAL
-    /// _ => 0,         // Unknown...
-    pub fn size(&self) -> usize {
-        match self {
-            TagType::Byte => 1,
-            TagType::Ascii => 1,
-            TagType::Short => 2,
-            TagType::Long => 4,
-            TagType::Rational => 8,
-            TagType::Undefined => 1,
-            TagType::Slong => 4,
-            TagType::Srational => 8,
-        }
-    }
-}
-
-struct ExifTag {
-    id: [u8; 2],
-    data_type: TagType,
-    count: [u8; 4],
-    value_offset: [u8; 4],
-    value: Vec<u8>,
 }
 
 #[cfg(test)]
@@ -291,11 +222,37 @@ mod tests {
         // arrange
         let tmp = metafix_test_fixtures::get_dir_with_fixtures("simple_album").unwrap();
         let clutch_file = tmp.path().join("simple_album").join("cbr.jpg");
-        dbg!(&clutch_file);
+        println!("{}", clutch_file.display());
         let file_data = std::fs::read(clutch_file).unwrap();
         // act
         let exif = ExifSegment::try_from(file_data.as_slice()).unwrap();
-        dbg!(exif);
+        println!("{:#?}", exif);
+        // assert
+    }
+
+    #[test]
+    fn exif_clutch_test() {
+        // arrange
+        let tmp = metafix_test_fixtures::get_dir_with_fixtures("simple_album").unwrap();
+        let clutch_file = tmp.path().join("simple_album").join("clutch.jpg");
+        println!("{}", clutch_file.display());
+        let file_data = std::fs::read(clutch_file).unwrap();
+        // act
+        let exif = ExifSegment::try_from(file_data.as_slice()).unwrap();
+        println!("{:#?}", exif);
+        // assert
+    }
+
+    #[test]
+    fn exif_dog_test() {
+        // arrange
+        let tmp = metafix_test_fixtures::get_dir_with_fixtures("simple_album").unwrap();
+        let clutch_file = tmp.path().join("simple_album").join("clutch.jpg");
+        println!("{}", clutch_file.display());
+        let file_data = std::fs::read(clutch_file).unwrap();
+        // act
+        let exif = ExifSegment::try_from(file_data.as_slice()).unwrap();
+        println!("{:#?}", exif);
         // assert
     }
 }

@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::parser::{
     FileParser, ParseError,
-    exif::{ExifError, ExifSegment},
+    exif::{ExifSegment, error::ExifError},
 };
 
 #[derive(Error, Debug)]
