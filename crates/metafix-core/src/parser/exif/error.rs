@@ -14,6 +14,8 @@ pub enum ExifError {
     WrongSignature(u16),
     #[error("Unknown IFD tag: {0}")]
     UnknownIfdTag(u16),
-    #[error("Other error: {0}")]
-    Other(&'static str),
+    #[error("Cannot read slice index: {0}")]
+    SliceRead(&'static str),
+    #[error(transparent)]
+    TryFromSlice(#[from] std::array::TryFromSliceError),
 }

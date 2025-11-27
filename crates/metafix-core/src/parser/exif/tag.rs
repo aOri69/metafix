@@ -77,3 +77,49 @@ impl TagType {
         }
     }
 }
+
+/// Represents an EXIF tag from image metadata.
+///
+/// Each tag has a 2-byte identifier, a type indicating the data format, and a variable-length
+/// value as raw bytes. This structure is used for parsing and displaying EXIF data in a compact,
+/// human-readable debug format.
+///
+/// # Debug Output Format
+/// ```
+/// Tag { id: 0x3231, kind: Ascii, value: [41 42 43] }
+/// ```
+/// - `id`: Displayed as 4-digit lowercase hex (e.g., `0x3231` for bytes `[0x32, 0x31]`).
+/// - `kind`: Uses the enum's [TagType] implementation.
+/// - `value`: Space-separated lowercase hex bytes in square brackets.
+///
+/// # Example
+/// ```
+/// let tag = Tag {
+///     id: [0x32, 0x31],
+///     kind: TagType::Ascii,
+///     value: vec![0x41, 0x42, 0x43], // "ABC"
+/// };
+/// assert_eq!(format!("{:?}", tag), "Tag { id: 0x3231, kind: Ascii, value: [41 42 43] }");
+/// ```
+pub struct Tag {
+    pub(super) id: [u8; 2],
+    pub(super) kind: TagType,
+    pub(super) value: Vec<u8>,
+}
+
+impl std::fmt::Debug for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Tag {{ id: 0x{:02x}{:02x}, kind: {:?}, value: [",
+            self.id[0], self.id[1], self.kind
+        )?;
+        for (i, &byte) in self.value.iter().enumerate() {
+            if i > 0 {
+                write!(f, " ")?;
+            }
+            write!(f, "{:02x}", byte)?;
+        }
+        write!(f, "] }}")
+    }
+}
